@@ -100,6 +100,12 @@ if ($search != '') {
 
 // ---------- CHECK USER TYPE ----------
 $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier';
+$isStaff   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Staff';
+$isAdmin   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Admin';
+
+// Get current file name (e.g. "sales.php", "product.php")
+$currentPage = basename($_SERVER['PHP_SELF']);
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -145,29 +151,53 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
     </div>
 </nav>
 
-<?php if ($isCashier): ?>
+<?php
+// If Staff tries to open any page except product.php → show Access Denied
+$currentPage = basename($_SERVER['PHP_SELF']); // e.g. "sales.php"
+if ($isCashier && $currentPage !== 'sales.php') {
+?>
     <center>
         <div>
             <h4 style="color:red;">⚠️ Access Denied</h4>
-            <p style="color:red;">You don’t have permission to view this table.</p>
+            <p style="color:red;">You don’t have permission to access this page.</p>
         </div>
     </center>
-<?php else: ?>
-
+<?php
+} elseif ($isStaff && $currentPage !== 'product.php') {
+?>
     <center>
-         <!-- 🔍 SEARCH BAR -->
-            <form method="GET" class="d-flex justify-content-end mb-3" style="max-width: 400px; margin: auto;">
-                <input 
-                    type="text" 
-                    name="search" 
-                    class="form-control me-2" 
-                    placeholder="Search brand, address, company, or status..." 
-                    value="<?= isset($_GET['search']) ? htmlspecialchars($_GET['search']) : '' ?>">
-                <button type="submit" class="btn btn-primary">Search</button>
-                <?php if (isset($_GET['search']) && $_GET['search'] != ''): ?>
-                    <a href="brand.php" class="btn btn-secondary ms-2">Clear</a>
-                <?php endif; ?>
-            </form>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} else {
+?>
+    <center>
+        <?php
+// Detect if a search is active
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+?>
+
+<!-- 🔍 SEARCH BAR -->
+<form method="GET" class="d-flex justify-content-end mb-3" style="max-width: 400px; margin: auto;">
+  <input 
+      type="text" 
+      name="search" 
+      class="form-control me-2" 
+      placeholder="Search brand, address, company, or status..." 
+      value="<?= htmlspecialchars($search); ?>">
+
+  <?php if (!empty($search)): ?>
+      <!-- 🔴 Clear button when search is active -->
+      <a href="brand.php" class="btn btn-danger ms-2">Clear</a>
+  <?php else: ?>
+      <!-- 🟢 Search button when no search -->
+      <button type="submit" class="btn btn-success">Search</button>
+  <?php endif; ?>
+</form>
+
     </center>
 <!-- BRAND FORM -->
 <div class="container">
@@ -230,8 +260,7 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
     <p style="color:black;">© MyPOS System 2025</p>
   </div>
 </footer>
-<?php endif; ?>
-
+<?php } ?>
 <script src="js/jquery.js"></script>
 <script src="js/bootstrap.min.js"></script>
 

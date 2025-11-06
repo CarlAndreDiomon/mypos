@@ -33,7 +33,14 @@ $summary_query = "SELECT
   FROM sales";
 $summary_result = $conn->query($summary_query);
 $summary = $summary_result->fetch_assoc();
+// ---------- CHECK USER TYPE ----------
 $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier';
+$isStaff   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Staff';
+$isAdmin   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Admin';
+
+// Get current file name (e.g. "sales.php", "product.php")
+$currentPage = basename($_SERVER['PHP_SELF']);
+
 ?>
 
 <!DOCTYPE html>
@@ -48,7 +55,7 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
   <style>
     body { background-color: #343a40; color: white; }
     .brand { color: white; }
-    .address-bar { color: #ddd; }
+    .address-bar { color: #d7d0d0ff; }
 
     /* --- RESTORED ORIGINAL NAVBAR DESIGN --- */
     .navbar-nav > li > a {
@@ -61,19 +68,9 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
     .navbar-nav { flex-wrap: nowrap !important; white-space: nowrap; }
     .navbar .container { display: flex; justify-content: center; align-items: center; }
     .navbar-brand { font-size: 16px; white-space: nowrap; }
-    .navbar-default {
-      background-color: #ffffff;
-      border: none;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .navbar-nav > li.active > a {
-      background-color: #f8f9fa !important;
-      border-radius: 6px;
-    }
-
     /* --- DASHBOARD BOX --- */
     .box {
-      background: #fff;
+      background: #f8ca7aff;
       padding: 25px;
       border-radius: 12px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.3);
@@ -88,7 +85,7 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
 
     /* --- SUMMARY BOXES --- */
     .summary-card {
-      background: #f8f9fa;
+      background: #f8ca7aff;
       color: #212529;
       border-radius: 10px;
       padding: 20px;
@@ -121,19 +118,43 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
     </div>
   </div>
 </nav>
-<?php if ($isCashier): ?>
-                <center>
-                    <div">
-                    <h4 style="color:red;">⚠️ Access Denied</h4>
-                    <p style="color:red;">You don’t have permission to view this table.</p>
-                </div>
-                </center>
-<?php else: ?>
-
+<br>
+<center>
+  <?php if (isset($_SESSION['login_message'])): ?>
+    <div style="color:lightblue;font-weight: bold;">
+        <?= htmlspecialchars($_SESSION['login_message']); ?>
+    </div>
+    <?php unset($_SESSION['login_message']); ?>
+<?php endif; ?>
+</center>
+<br>
+<?php
+// If Staff tries to open any page except product.php → show Access Denied
+$currentPage = basename($_SERVER['PHP_SELF']); // e.g. "sales.php"
+if ($isCashier && $currentPage !== 'sales.php') {
+?>
+    <center>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} elseif ($isStaff && $currentPage !== 'product.php') {
+?>
+    <center>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} else {
+?>
 <!-- MAIN DASHBOARD -->
 <div class="container">
   <div class="box">
-    <center><h2>📊 Sales Performance Overview</h2></center>
+    <center><h2>📊 Sales Overview</h2></center>
     <canvas id="salesChart" height="120"></canvas>
   </div>
 
@@ -203,7 +224,7 @@ const salesChart = new Chart(ctx, {
   }
 });
 </script>
-<?php endif; ?>
+<?php } ?>
 </body>
 </html>
 

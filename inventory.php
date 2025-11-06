@@ -145,7 +145,14 @@ $sql = "SELECT
     ORDER BY i.inventory_id ASC";
 
 $result = $conn->query($sql);
+// ---------- CHECK USER TYPE ----------
 $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier';
+$isStaff   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Staff';
+$isAdmin   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Admin';
+
+// Get current file name (e.g. "sales.php", "product.php")
+$currentPage = basename($_SERVER['PHP_SELF']);
+
 ?>
 
 
@@ -190,14 +197,30 @@ body { background-color:#343a40; }
 </div>
 </nav>
 
-<?php if ($isCashier): ?>
-<center>
-    <div>
-        <h4 style="color:red;">⚠️ Access Denied</h4>
-        <p style="color:red;">You don’t have permission to view this table.</p>
-    </div>
-</center>
-<?php else: ?>
+<?php
+// If Staff tries to open any page except product.php → show Access Denied
+$currentPage = basename($_SERVER['PHP_SELF']); // e.g. "sales.php"
+if ($isCashier && $currentPage !== 'sales.php') {
+?>
+    <center>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} elseif ($isStaff && $currentPage !== 'product.php') {
+?>
+    <center>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} else {
+?>
+
 <div class="container">
 <div class="box">
 <h2><?= $editData ? "EDIT STOCK" : "ADD STOCK" ?></h2>
@@ -281,8 +304,7 @@ if ($result && $result->num_rows > 0) {
     <p style="color:black;">© MyPOS System 2025</p>
   </div>
 </footer>
-<?php endif; ?>
-
+<?php } ?>
 <script src="js/jquery.js"></script>
 <script src="js/bootstrap.min.js"></script>
 </body>

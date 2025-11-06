@@ -188,6 +188,14 @@ if (isset($_GET['delete_or'])) {
 // ---------- FETCH PRODUCTS ----------
 $products = $conn->query("SELECT p.*, i.stock AS stock FROM product p 
                           LEFT JOIN inventory i ON p.product_id=i.product_id");
+// ---------- CHECK USER TYPE ----------
+$isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier';
+$isStaff   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Staff';
+$isAdmin   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Admin';
+
+// Get current file name (e.g. "sales.php", "product.php")
+$currentPage = basename($_SERVER['PHP_SELF']);
+
 ?>
 
 
@@ -239,17 +247,38 @@ $products = $conn->query("SELECT p.*, i.stock AS stock FROM product p
 </ul>
 </div>
 </nav>
-<?php if (isset($access_denied) && $access_denied): ?>
-    <div class="container text-center mt-5">
-        <div class="alert alert-danger">
-            <h3>Access Denied</h3>
-            <p>You do not have permission to access this page.</p>
-        </div>
+<center>
+  <?php if (isset($_SESSION['login_message'])): ?>
+    <div style="color:lightblue;font-weight: bold;">
+        <?= htmlspecialchars($_SESSION['login_message']); ?>
     </div>
-<?php else: ?>
-    <!-- Your normal page content or tables go here -->
+    <?php unset($_SESSION['login_message']); ?>
 <?php endif; ?>
-s
+</center>
+<br>
+<?php
+// If Staff tries to open any page except product.php → show Access Denied
+$currentPage = basename($_SERVER['PHP_SELF']); // e.g. "sales.php"
+if ($isCashier && $currentPage !== 'sales.php') {
+?>
+    <center>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} elseif ($isStaff && $currentPage !== 'product.php') {
+?>
+    <center>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} else {
+?>
 <div class="container">
 
 <!-- ADD ITEM FORM -->
@@ -478,7 +507,7 @@ style.innerHTML = `
 }`;
 document.head.appendChild(style);
 </script>
-
+<?php } ?>
 <script src="js/jquery.js"></script>
 <script src="js/bootstrap.min.js"></script>
 </body>

@@ -97,17 +97,36 @@ if (isset($_GET['delete'])) {
     header("Location: product.php");
     exit();
 }
+// ---------- SEARCH ----------
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$searchQuery = "";
+if (!empty($search)) {
+    $searchQuery = "WHERE p.product_name LIKE '%$search%' 
+                    OR p.product_code LIKE '%$search%' 
+                    OR b.brand_name LIKE '%$search%' 
+                    OR c.category_name LIKE '%$search%'";
+}
 
-// ---------- FETCH ALL product ----------
-$result = $conn->query("
+// ---------- FETCH PRODUCTS (WITH SEARCH SUPPORT) ----------
+$sql = "
     SELECT p.*, b.brand_name, c.category_name
     FROM product p
     LEFT JOIN brands b ON p.brand_id = b.brand_id
     LEFT JOIN category c ON p.category_id = c.category_id
+    $searchQuery
     ORDER BY p.product_id ASC
-");
+";
+$result = $conn->query($sql);
+
+// ---------- CHECK USER TYPE ----------
 // ---------- CHECK USER TYPE ----------
 $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier';
+$isStaff   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Staff';
+$isAdmin   = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Admin';
+
+// Get current file name (e.g. "sales.php", "product.php")
+$currentPage = basename($_SERVER['PHP_SELF']);
+
 ?>
 
 <!DOCTYPE html>
@@ -158,14 +177,39 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
         </ul>
     </div>
 </nav>
-<?php if ($isCashier): ?>
-                <center>
-                    <div">
-                    <h4 style="color:red;">⚠️ Access Denied</h4>
-                    <p style="color:red;">You don’t have permission to view this table.</p>
-                </div>
-                </center>
-            <?php else: ?>
+<center>
+  <?php if (isset($_SESSION['login_message'])): ?>
+    <div style="color:lightblue;font-weight: bold;">
+        <?= htmlspecialchars($_SESSION['login_message']); ?>
+    </div>
+    <?php unset($_SESSION['login_message']); ?>
+<?php endif; ?>
+</center>
+
+<?php
+// If Staff tries to open any page except product.php → show Access Denied
+$currentPage = basename($_SERVER['PHP_SELF']); // e.g. "sales.php"
+if ($isCashier && $currentPage !== 'sales.php') {
+?>
+    <center>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} elseif ($isStaff && $currentPage !== 'product.php') {
+?>
+    <center>
+        <div>
+            <h4 style="color:red;">⚠️ Access Denied</h4>
+            <p style="color:red;">You don’t have permission to access this page.</p>
+        </div>
+    </center>
+<?php
+} else {
+?>
+
 
 <div class="container mt-4">
 <?php if(isset($_SESSION['message'])): ?>
@@ -174,36 +218,87 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
     <div class="alert alert-danger"><?= $_SESSION['error']; unset($_SESSION['error']); ?></div>
 <?php endif; ?>
 </div>
+ <?php
+// Detect if a search is active
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+?>
+
+<!-- 🔍 SEARCH + ADD BUTTON -->
+<form method="GET" class="form-inline text-center mb-3">
+  <input type="text" name="search" class="form-control" placeholder="Search product..." 
+         value="<?= htmlspecialchars($search) ?>">
+
+  <?php if (!empty($search)): ?>
+      <!-- 🔴 Clear button when search is active -->
+      <a href="product.php" class="btn btn-danger">Clear</a>
+  <?php else: ?>
+      <!-- 🟢 Search button when no search -->
+      <button type="submit" class="btn btn-success">Search</button>
+  <?php endif; ?>
+
+  <!-- 🔵 Add Product button -->
+  <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#addProductModal">+ Add Product</button>
+</form>
 
 <div class="container">
     <div class="box">
         <h2 class="intro-text text-center">PRODUCT</h2>
 
-        <!-- ADD PRODUCT FORM -->
-        <form method="POST" class="form-inline text-center mb-4">
-            <input type="text" name="product_code" class="form-control mb-2" placeholder="Product Code" required>
-            <input type="text" name="product_name" class="form-control mb-2" placeholder="Product Name" required>
-            <input type="number" step="0.01" name="price" class="form-control mb-2" placeholder="Price" required>
+        <!-- ADD PRODUCT MODAL -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Product</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <label>Product Code</label>
+                    <input type="text" name="product_code" class="form-control mb-2" required>
 
-            <select name="brand_id" class="form-control mb-2" required>
-                <option value="">Select Brand</option>
-                <?php while($b=$brands->fetch_assoc()): ?>
-                    <option value="<?= $b['brand_id'] ?>"><?= htmlspecialchars($b['brand_name']) ?></option>
-                <?php endwhile; ?>
-            </select>
+                    <label>Product Name</label>
+                    <input type="text" name="product_name" class="form-control mb-2" required>
 
-            <select name="category_id" class="form-control mb-2" required>
-                <option value="">Select Category</option>
-                <?php while($c=$categories->fetch_assoc()): ?>
-                    <option value="<?= $c['category_id'] ?>"><?= htmlspecialchars($c['category_name']) ?></option>
-                <?php endwhile; ?>
-            </select>
+                    <label>Price</label>
+                    <input type="number" step="0.01" name="price" class="form-control mb-2" required>
 
-            <input type="text" name="description" class="form-control mb-2" placeholder="Description" required>
-            <input type="text" name="status" class="form-control mb-2" placeholder="Status" required>
-            <br>
-            <button type="submit" name="add_product" class="btn btn-primary mb-2">Add Product</button>
-        </form>
+                    <label>Brand</label>
+                    <select name="brand_id" class="form-control mb-2" required>
+                        <option value="">Select Brand</option>
+                        <?php
+                        $bresult = $conn->query("SELECT * FROM brands WHERE status='Active'");
+                        while($b=$bresult->fetch_assoc()):
+                        ?>
+                        <option value="<?= $b['brand_id'] ?>"><?= htmlspecialchars($b['brand_name']) ?></option>
+                        <?php endwhile; ?>
+                    </select>
+
+                    <label>Category</label>
+                    <select name="category_id" class="form-control mb-2" required>
+                        <option value="">Select Category</option>
+                        <?php
+                        $cresult = $conn->query("SELECT * FROM category WHERE status='Active'");
+                        while($c=$cresult->fetch_assoc()):
+                        ?>
+                        <option value="<?= $c['category_id'] ?>"><?= htmlspecialchars($c['category_name']) ?></option>
+                        <?php endwhile; ?>
+                    </select>
+
+                    <label>Description</label>
+                    <input type="text" name="description" class="form-control mb-2" required>
+
+                    <label>Status</label>
+                    <input type="text" name="status" class="form-control mb-2" value="Active" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" name="add_product" class="btn btn-primary">Add Product</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
      <br>
         <!-- product TABLE -->
         <table class="table table-bordered table-hover text-center align-middle">
@@ -335,8 +430,7 @@ $isCashier = isset($_SESSION['usertype']) && $_SESSION['usertype'] === 'Cashier'
     <p style="color:black;">© MyPOS System 2025</p>
   </div>
 </footer>
-<?php endif; ?>
-
+<?php } ?>
 <script src="js/jquery.js"></script>
 <script src="js/bootstrap.min.js"></script>
 </body>
